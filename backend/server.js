@@ -118,7 +118,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 4000;
+const port = 5000;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -126,9 +126,13 @@ app.use(cors({
     origin: true,
     credentials: true,
 }));
+console.log('INSIDE');
+
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 app.post('/chat', async (req, res) => {
+    console.log('INSIDE chat route');
+
     try {
         const { messages } = req.body;
         console.log('REQ BODY', req.body);
@@ -162,6 +166,8 @@ app.post('/chat', async (req, res) => {
 
         res.status(200).json({ assistantMessage });
     } catch (error) {
+        console.log('INSIDE chat error');
+
         console.error('Error:', error);
         res.status(500).json({ error: 'An error occurred while processing the request.' });
     }

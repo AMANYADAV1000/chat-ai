@@ -254,8 +254,7 @@ function ChatContainer() {
         };
 
         try {
-            
-            const response = await axios.post(process.env.REACT_APP_API_URL, payload);
+            const response = await axios.post("https://chat-ai-0mhg.onrender.com/chat", payload);
 
             if (!response.data.success) {
                 toast.error(response.data.error);
