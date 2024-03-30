@@ -254,7 +254,7 @@ function ChatContainer() {
         };
 
         try {
-            const response = await axios.post("http://localhost:5000/chat", payload);
+            const response = await axios.post("https://chat-app-r44sb.ondigitalocean.app/chat", payload);
 
             if (!response.data.success) {
                 toast.error(response.data.error);
