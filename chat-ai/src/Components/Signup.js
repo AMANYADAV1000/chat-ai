@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from 'react-google-login'; // Import the GoogleLogin component
 import axios from 'axios';
