@@ -73,7 +73,7 @@
 //         max_tokens: 300,
 //     };
 //     console.log('paylaod', payload);
-    
+
 //     //console.log('headers', headers);
 
 //     // const axiosConfig = {
@@ -110,11 +110,18 @@
 
 
 
-
+//mongodb+srv://umang:hSIDQrwaxRsbaWwX@cluster01.2gtklha.mongodb.net/?retryWrites=true&w=majority
 const express = require('express');
 const bodyParser = require('body-parser');
+const fs = require('fs').promises;
+const path = require('path');
 const axios = require('axios');
 const cors = require('cors');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const session = require('express-session');
+const User = require('./Modal/User'); // Import the User model
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const app = express();
@@ -128,7 +135,89 @@ app.use(cors({
 }));
 console.log('INSIDE');
 
+
+
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+// Session setup
+app.use(session({
+    secret: 'secret', // You should use a more secure secret in production
+    resave: false,
+    saveUninitialized: true,
+}));
+
+// Initialize Passport and restore authentication state, if any, from the session
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser((user, done) => {
+    done(null, user);
+});
+
+passport.deserializeUser((obj, done) => {
+    done(null, obj);
+});
+
+// Configure the Google strategy for use by Passport
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/callback"
+},
+    (accessToken, refreshToken, profile, cb) => {
+        // Here, you would typically find or create a user in your database
+        console.log(profile);
+        return cb(null, profile);
+    }
+));
+
+// Define routes
+app.get('/auth/google',
+    passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+app.get('/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    (req, res) => {
+        // Successful authentication, redirect home or to another page
+        res.redirect('/chat'); // Adjust this as needed
+    });
+
+
+
+// Signup route
+app.post('/signup', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = new User({ email, password });
+        await user.save();
+        res.status(201).send('User created successfully');
+    } catch (error) {
+        res.status(500).send('Error creating user');
+    }
+});
+
+// Login route
+app.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(401).send('Authentication failed');
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).send('Authentication failed');
+        }
+
+        // Here, you can set up your session or token-based authentication
+        // For now, we'll just return a success message
+        res.send('Login successful');
+    } catch (error) {
+        res.status(500).send('Error logging in');
+    }
+});
+
 
 app.post('/chat', async (req, res) => {
     console.log('INSIDE chat route');
@@ -163,6 +252,22 @@ app.post('/chat', async (req, res) => {
         const assistantMessage = choices[0].message;
         console.log('ASSISTANT MESSAGE AFTER API RESPONSE', assistantMessage);
 
+        
+        const contentToSave = choices[0].message.content; // Extract the content field which is the text you want to save
+
+        // Save the content as a text file
+        const textFilePath = path.resolve('./response.txt');
+        await fs.writeFile(textFilePath, contentToSave);
+
+
+        try {
+            console.error('GOING FOR SAVE SPEECH');
+
+            await generateAndSaveSpeech(contentToSave);
+        } catch (error) {
+            console.error('Failed to generate speech:', error);
+            // You can choose to handle this error in a different way, e.g., by not generating the speech file
+        }
 
         res.status(200).json({ assistantMessage });
     } catch (error) {
@@ -172,6 +277,49 @@ app.post('/chat', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while processing the request.' });
     }
 });
+
+async function generateAndSaveSpeech(text) {
+    // Generate speech from text
+    const mp3Buffer = await generateSpeechFromText(text);
+    const speechFile = path.resolve("./speech.mp3");
+
+    // Save the speech audio as an MP3 file
+    await fs.writeFile(speechFile, mp3Buffer);
+    console.log(`Speech file saved at: ${speechFile}`);
+}
+
+async function generateSpeechFromText(text) {
+    try {
+        console.log('Going for audio generation in text to speech block');
+
+        const response = await axios.post('https://api.openai.com/v1/audio/speech',
+        {
+            model: "tts-1",
+            input: text,
+            voice: "alloy",
+        },
+        {
+                headers: {
+                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'audio/mpeg'
+                },
+                responseType: 'arraybuffer'  // This ensures you get the raw binary data
+            }
+        );
+        console.log('AUDIO GENERATE DONE -- ABOVE BUFFER', response.data);
+
+        // Convert the array buffer from the response to a Buffer
+        const buffer = Buffer.from(response.data);
+        return buffer;
+
+ 
+    } catch (error) {
+        console.error('Failed to generate speech:', error);
+        throw error;
+    }
+}
+
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
