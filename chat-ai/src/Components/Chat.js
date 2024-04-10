@@ -194,6 +194,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import Video from "./Video.js";
 
 function ChatContainer() {
     const [message, setMessage] = useState("");
@@ -280,6 +281,7 @@ function ChatContainer() {
 
     return (
         <div className="flex flex-col h-full">
+            <Video />
             <div className="flex-1 overflow-y-auto p-4">
                 {messages.map((message, idx) => (
                     <div
