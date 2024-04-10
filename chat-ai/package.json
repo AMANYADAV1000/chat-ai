@@ -2,9 +2,7 @@
   "name": "chat-ai",
   "version": "0.1.0",
   "private": true,
-  "engines": {
-    "node": "17.x"
-  },
+
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.5.1",
     "@fortawesome/free-solid-svg-icons": "^6.5.1",
@@ -49,5 +47,12 @@
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "tailwindcss": "^3.4.1"
+  },
+  "overrides": {
+  "react-google-login": {
+    "react": "^17.0.0",
+    "react-dom": "^17.0.0"
   }
 }
+}
+
